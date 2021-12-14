@@ -1,0 +1,113 @@
+import { useEffect, useState } from 'react';
+import MonacoEditor from 'react-monaco-editor';
+
+function Monaco(props) {
+    const options = {
+        selectOnLineNumbers: true,
+        roundedSelection: false,
+          cursorStyle: 'line',
+          automaticLayout: false,
+          theme: 'vs-dark',
+    };
+    const [code, setCode] = useState("console.log('hola',process.argv)");
+    const [result, setResult] = useState('...');
+    const [hasErrors, setHasErrors] = useState(false);
+
+
+    useEffect(() => {
+        // console.log('editorDidMount', editor);
+        //editor.focus();
+    }, []);
+
+    const onChange = (newValue, e) => {
+        console.log('onChange', newValue, e);
+        setCode(newValue)
+    }
+
+    const editorDidMount = (editor, monaco) => {
+        console.log('editorDidMount', editor);
+        editor.focus();
+    }
+    const send = async (e) => {
+
+        e.preventDefault();
+        console.log('ejecuando:', code)
+        const jsonToSend = {
+            "language": "js",
+            "version": "15.10.0",
+            "files": [
+                {
+                    "name": "my_cool_code.js",
+                    "content": code,//"console.log('hola',process.argv)"
+                }
+            ],
+            "stdin": "",
+            "args": ["1", "2", "3"],
+            "compile_timeout": 10000,
+            "run_timeout": 3000,
+            "compile_memory_limit": -1,
+            "run_memory_limit": -1
+        }
+        /*console.log('llamando')
+        const rawResponse = await fetch('http://localhost:4000/execute', {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify('jsonToSend')
+        });
+        const content = await rawResponse.json();
+*/
+
+        /// 
+        const rawResponse = await fetch('http://localhost:4000/execute', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+                // 'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            /*headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },*/
+            body: JSON.stringify(jsonToSend)
+        });
+        const js = await rawResponse.json()
+        if (js.run.code != 0) setHasErrors(true)
+        else setHasErrors(false)
+        setResult(js.run.output)
+        console.log(js);
+    }
+
+    const runtimes = async (e) => {
+
+        e.preventDefault();
+        const response = await fetch('http://localhost:4000/runtimes')
+        const content = await response.json();
+        console.log('runtimes', content);
+    }
+
+    return (
+        <>
+            <MonacoEditor
+                width="800"
+                height="300"
+                defaultLanguage='javascript'
+                language="javascript"
+                theme="vs-dark"
+                value={code}
+                options={options}
+                onChange={onChange}
+                editorDidMount={editorDidMount}
+            />
+            <button onClick={(e) => runtimes(e)}>Runtimes</button>
+            <button onClick={(e) => send(e)}>Enviar</button>
+            <br />
+            <textarea className={hasErrors ? 'hasErrors' : null}
+                value={result}></textarea>
+        </>
+    )
+}
+
+export default Monaco;
